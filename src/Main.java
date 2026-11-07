@@ -1,13 +1,49 @@
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-void main() {
-  //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-  // to see how IntelliJ IDEA suggests fixing it.
-  IO.println(String.format("Hello and welcome!"));
+class Counter{
+    private volatile long counter = 0;
+    long getCounter() { return counter; }
+    void increment() { counter++;  }
+}
+public static class InterferenceExample {
+    private static final int HUNDRED_MILLION = 100_000_000;
+    private final AtomicInteger stopSignal = new AtomicInteger();
+    private int lostCounter = 0;
+    boolean stop() {
+        return stopSignal.incrementAndGet() > HUNDRED_MILLION;
+    }
+    void incrementLostCounter() {
+        lostCounter++;
+    }
+    int getLostCounter() {
+        return lostCounter;
+    }
+    void example() throws InterruptedException {
+        InterferenceThread thread1 = new InterferenceThread(this);
+        InterferenceThread thread2 = new InterferenceThread(this);
+        long startTime = System.currentTimeMillis();
+        thread1.start();
+        thread2.start();
+        thread1.join();
+        thread2.join();
+        long endTime = System.currentTimeMillis();
 
-  for (int i = 1; i <= 5; i++) {
-    //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-    // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-    IO.println("i = " + i);
-  }
+        System.out.println("Ожидание (AtomicInteger стоп-сигнал): " + HUNDRED_MILLION);
+        System.out.println("Потрачено времени: " + (endTime - startTime) + " мс");
+        System.out.println("Результат (счетчик с потерями): " + getLostCounter());
+        System.out.println("Потеряно инкрементов: " + (HUNDRED_MILLION - getLostCounter()));
+    }
+}
+public static class InterferenceThread extends Thread {
+    private final InterferenceExample checker;
+    InterferenceThread(InterferenceExample checker) {
+        this.checker = checker;
+    }
+    @Override
+    public void run() {
+        while (!checker.stop()) {
+            checker.incrementLostCounter();
+        }
+    }
+}
+public static void main(String[] args) throws InterruptedException {
+    new InterferenceExample().example();
 }
